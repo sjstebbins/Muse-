@@ -25,7 +25,8 @@ user = homedir.rsplit('/', 1)[-1]
 
 app = Flask(__name__)
 
-l = Library("/Users/" + user + "/Music/iTunes/iTunes Music Library.xml")
+# l = Library("/Users/" + user + "/Music/iTunes/iTunes Music Library.xml")
+l = Library("/Users/" + user + "/Desktop/iTunes Music Library.xml")
 playlists=l.getPlaylistNames()
 
 #  Client Keys
@@ -128,7 +129,7 @@ def callback():
 
     # ITUNES PLAYLISTS
     # Extract playlist track data
-    for track in l.getPlaylist(playlists[-1]).tracks:
+    for track in l.getPlaylist(playlists[-2]).tracks:
         artist = "%20artist:" + urllib.quote(track.artist).encode() if track.artist else ''
         song = urllib.quote(track.name).encode() or ''
         # API: Search for top ID hit based on artist and song
