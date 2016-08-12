@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta http-equiv="x-ua-compatible" content="ie=edge">
+    <title>Muse</title>
+    <!-- Material Design -->
+    <link href="{{url_for('static', filename='css/base.min.css')}}" rel="stylesheet">
+    <link href="{{url_for('static', filename='css/project.min.css')}}" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.0/jquery.min.js"></script>
+    <script src="{{url_for('static', filename='js/base.min.js')}}"></script>
+    <script src="{{url_for('static', filename='js/project.min.js')}}"></script>
+</head>
+<body>
+  <body class="page-brand">
+<header class="header ui-header">
+  <span class="header-logo">Muse</span>
+</header>
+<main class="content">
+  <div class="container">
+    <div class="row">
+      <div class="col-lg-4 col-lg-push-4 col-sm-6 col-sm-push-3">
+        <section class="content-inner">
+          <div class="card">
+            <div class="card-main">
+              <!-- <div class="card-header">
+                <div class="card-inner">
+                  <h1 class="card-heading">Login</h1>
+                </div>
+              </div> -->
+              <div class="card-inner">
+                <p class="text-center">
+                  <span class="avatar avatar-inline avatar-lg">
+                    <img alt="Login" src="../images/users/avatar-001.jpg">
+                  </span>
+                </p>
+                <form class="form" action="/authorize" method="post">
+                  <div class="form-group">
+                    <div class="row">
+                      <div class="col-md-10 col-md-push-1">
+                        <button class="btn btn-block btn-brand waves-attach waves-light">Sign In With Spotify</button>
+                      </div>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</main>
+</body>
+</html>

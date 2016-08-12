@@ -1,16 +1,19 @@
-import json
 from flask import Flask, request, redirect, g, render_template
+import json
 import requests
 import random
 import base64
 import urllib
 import os
 from itertools import *
-from pyItunes import *
 from sklearn.neighbors import DistanceMetric
+#Itunes
+from pyItunes import *
+#Youtube
 from apiclient.discovery import build
 from apiclient.errors import HttpError
 from oauth2client.tools import argparser
+
 # Set home directory based on logged in user
 homedir = os.environ['HOME']
 user = homedir.rsplit('/', 1)[-1]
@@ -58,15 +61,16 @@ auth_query_parameters = {
 
 @app.route("/")
 def index():
-    # Auth Step 1: Authorization
-    url_args = "&".join(["{}={}".format(key,urllib.quote(val)) for key,val in auth_query_parameters.iteritems()])
-    auth_url = "{}/?{}".format(SPOTIFY_AUTH_URL, url_args)
-    return redirect(auth_url)
+    return render_template("landing.html")
 
 # @app.route('/foo', methods=['GET', 'POST])
 # def foo():
 #     return 'HELLO'
-
+@app.route("/authorize", methods=['GET', 'POST'])
+def authorize():
+    url_args = "&".join(["{}={}".format(key,urllib.quote(val)) for key,val in auth_query_parameters.iteritems()])
+    auth_url = "{}/?{}".format(SPOTIFY_AUTH_URL, url_args)
+    return redirect(auth_url)
 
 @app.route("/callback/q")
 def callback():
@@ -305,6 +309,8 @@ def callback():
 
         recommendation_data['videos'].append("http://www.youtube.com/embed/" + str(youtube_search({'q': artist + "," + song})) + '?autoplay=1&iv_load_policy=3&showsearch=0')
         # &showinfo=0
+        with open('./store/data.json', 'w') as outfile:
+            json.dump(recommendation_data['videos'], outfile)
     #display_arr = [profile_data] + playlist_data["items"]
     return render_template("index.html",
                                 track_info=seed_data['track_info'],
@@ -313,8 +319,8 @@ def callback():
                                 seed_distances=seed_data['distances'],
                                 seed_songs=seed_songs,
                                 seed_artists=seed_artists,
-                                results=results,
-                                videos=[random.choice(recommendation_data['videos'])],
+                                results=results[0],
+                                video=random.choice(recommendation_data['videos']),
                                 seed_recommend_ttest=seed_recommend_ttest
                             )
 
