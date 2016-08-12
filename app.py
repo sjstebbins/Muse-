@@ -25,10 +25,10 @@ user = homedir.rsplit('/', 1)[-1]
 
 app = Flask(__name__)
 
-# l = Library("/Users/" + user + "/Music/iTunes/iTunes Music Library.xml")
-l = Library("/Users/" + user + "/Desktop/iTunes Music Library.xml")
+l = Library("/Users/" + user + "/Music/iTunes/iTunes Music Library.xml")
+# l = Library("/Users/" + user + "/Desktop/iTunes Music Library.xml")
 playlists=l.getPlaylistNames()
-
+print playlists
 #  Client Keys
 CLIENT_ID = "efe1eb24d4144c85820e486aac3dfe6d"
 CLIENT_SECRET = "fc0d5b90374e49a4bb9de5f9a6e3abdc"
@@ -129,7 +129,7 @@ def callback():
 
     # ITUNES PLAYLISTS
     # Extract playlist track data
-    for track in l.getPlaylist(playlists[-2]).tracks:
+    for track in l.getPlaylist(playlists[-1]).tracks:
         artist = "%20artist:" + urllib.quote(track.artist).encode() if track.artist else ''
         song = urllib.quote(track.name).encode() or ''
         # API: Search for top ID hit based on artist and song
@@ -314,6 +314,7 @@ def callback():
             json.dump(recommendation_data['videos'], outfile)
     #display_arr = [profile_data] + playlist_data["items"]
     return render_template("index.html",
+                                playlists=playlists,
                                 track_info=seed_data['track_info'],
                                 track_attributes=seed_data['track_attributes'],
                                 phantom_average_track=phantom_average_track,
@@ -321,7 +322,7 @@ def callback():
                                 seed_songs=seed_songs,
                                 seed_artists=seed_artists,
                                 results=results[0],
-                                video=random.choice(recommendation_data['videos']),
+                                video=recommendation_data['videos'][0],
                                 seed_recommend_ttest=seed_recommend_ttest
                             )
 
