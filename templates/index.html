@@ -224,7 +224,7 @@
       <div class="progress" style="width: calc(100% - 380px);left: 240px;top: 3px;opacity: .8;position:absolute;background-color:lightgrey;">
           <div id="progress" class="progress-bar" style="background-color:#3f51b5"></div>
       </div>
-      <div id="end-time" style="position: absolute;right: 80px;top: 20px;font-size: 10px;color: darkgrey;"></div>
+      <div id="end-time" style="position: absolute;right: 95px;top: 20px;font-size: 10px;color: darkgrey;"></div>
       <!-- <div class="checkbox switch" style="position: absolute;right: 25px;top: 20px;color: darkgrey;">
           <label>
               <input class="access-hide" id="autoplay" type="checkbox"><span class="switch-toggle"></span> Autoplay
@@ -326,10 +326,11 @@
         }
       }
       //move rainbow effect to appropriate song
-      $('.rainbow div:first-child').removeClass('ui-selectee ui-selected')
+      $('.rainbow').first().removeClass('ui-selectee ui-selected')
       $('.rainbow').removeClass('rainbow tile-brand-accent ui-picker-selected')
       $('*[title="' + next_song[1] + '"]').parent().addClass('rainbow tile-brand-accent ui-picker-selected')
-      $('.rainbow div:first-child').addClass('ui-selectee ui-selected')
+      $('.rainbow').first().addClass('ui-selectee ui-selected')
+      $('.ui-picker-info-title-wrap').text(next_song[0] + ': ' + next_song[1])
       // scroll to song
       $('.ui-picker-inner').animate({scrollTop: $(".rainbow").offset().top},'slow');
       //get next video
@@ -338,8 +339,8 @@
       }, 1000)
 
       $.getJSON('/get_video', {
-        artist: next_song[0],
-        title: next_song[1]
+        artist: next_song[0].replace(/"/g, "'"),
+        title: next_song[1].replace(/"/g, "'")
       }, function(data) {
         $('#play').flip('back');
         //load new video
@@ -371,6 +372,7 @@
       $('.rainbow').removeClass('rainbow tile-brand-accent ui-picker-selected')
       $('*[title="' + previous_song[1] + '"]').parent().addClass('rainbow tile-brand-accent ui-picker-selected')
       $('.rainbow div').first().addClass('ui-selectee ui-selected')
+      $('.ui-picker-info-title-wrap').text(previous_song[0] + ': ' + previous_song[1])
       // scroll to song
       $('.ui-picker-inner').animate({scrollTop: $(".rainbow").offset().top},'slow');
       //get next video
@@ -378,8 +380,8 @@
         opacity: 1
       }, 1000)
       $.getJSON('/get_video', {
-        artist: previous_song[0],
-        title: previous_song[1]
+        artist: previous_song[0].replace(/"/g, "'"),
+        title: previous_song[1].replace(/"/g, "'")
       }, function(data) {
         $('#play').flip('back');
         //load new video
@@ -437,8 +439,6 @@
         //set current time
         $('#current-time').text(String(player.getCurrentTime()).toHHMMSS())
       }, 50)
-      //set end time
-      $('#end-time').text(String(player.getDuration()).toHHMMSS())
     }
     // 5. The API calls this function when the player's state changes.
     //    The function indicates that when playing a video (state=1),
@@ -448,6 +448,8 @@
         if (player.getPlayerState() == 0) {
           loadSong()
         }
+        //add end time
+        $('#end-time').text(String(player.getDuration()).toHHMMSS())
     }
 
     // ON ROW SELECT YOUTUBE CALL------------------------------------------------
@@ -457,8 +459,8 @@
           // $('#video').empty()
           //make it so only one song can be selected at a time
           $('.rainbow div').first().removeClass('ui-selectee ui-selected')
-          $('.ui-picker-item').not($(ui.selected).parent()).removeClass('rainbow');
-          $(ui.selected).parent().addClass('rainbow')
+          $('.ui-picker-item').not($(ui.selected).parent()).removeClass('rainbow tile-brand-accent ui-picker-selected');
+          $(ui.selected).parent().addClass('rainbow tile-brand-accent ui-picker-selected')
           $('.rainbow div').first().addClass('ui-selectee ui-selected')
 
           artist =  $(ui.selected).attr('artist')
@@ -467,8 +469,8 @@
             opacity: 1
           }, 1000)
           $.getJSON('/get_video', {
-            artist: String(artist),
-            title: String(title)
+            artist: String(artist).replace(/"/g, "'"),
+            title: String(title).replace(/"/g, "'")
           }, function(data) {
             $('#play').flip('back');
             //load new video
