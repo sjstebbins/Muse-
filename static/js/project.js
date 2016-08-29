@@ -25,42 +25,7 @@
 	};
 
 	if (typeof jQuery.ui != 'undefined') {
-		// draggable
-			$('.ui-picker-draggable-handler').draggable({
-				addClasses: false,
-				appendTo: 'body',
-				cursor: 'move',
-				cursorAt: {
-					top: 0,
-					left: 0 
-				},
-				delay: 100,
-				helper: function () {
-					return $('<div class="tile tile-brand-accent ui-draggable-helper"><div class="tile-side pull-left"><div class="avatar avatar-sm"><strong>' + $('.ui-picker-selected:first .ui-picker-draggable-avatar strong').html() + '</strong></div></div><div class="tile-inner text-overflow">' + $('.ui-picker-selected:first .ui-picker-info-title').html() + '</div></div>');
-				},
-				start: function (event, ui) {
-					var draggableCount = $('.ui-picker-selected').length;
-
-					if (draggableCount > 1) {
-						$('.ui-draggable-helper').append('<div class="avatar avatar-brand avatar-sm ui-picker-draggable-count">' + draggableCount + '</div>');
-					};
-				},
-				zIndex: 100
-			});
-
-		// droppable
-			$('.ui-picker-nav .nav a').droppable({
-				accept: '.ui-picker-draggable-handler',
-				addClasses: false,
-				drop: function(event, ui) {
-					$('body').snackbar({
-						content: 'Dropped on "' + $(this).html() + '"'
-					});
-				},
-				hoverClass: 'ui-droppable-helper',
-				tolerance: 'pointer'
-			});
-
+		
 		// selectable
 			$pickerLib.selectable({
 				cancel: '.ui-picker-draggable-handler',

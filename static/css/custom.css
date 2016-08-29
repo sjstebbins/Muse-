@@ -1,0 +1,33 @@
+.icon:hover {
+  color: #ff4081 !important;
+}
+.rainbow {
+  animation: rainbow 10s ease infinite;
+  background: linear-gradient(270deg, rgb(31, 234, 182), rgb(234, 31, 199), rgb(234, 194, 31)) 0% 0% / 300% 300%;
+  color: white
+}
+.tile-brand-accent {
+  background-color: white !important;
+  color: white !important
+}
+
+.ripple,.ripple:before,.ripple:after {
+  display:block;
+  border-radius:2px;
+  width:2px;
+  height:2px;
+  -webkit-animation:rip 6s infinite ease-out;
+  -moz-animation:rip 6s infinite ease-out;
+}
+.ripple {
+  position:absolute;
+  z-index:-1;
+  top:40px;
+  left:15px;
+}
+.ripple:before,.ripple:after {
+  content:'';
+  position:absolute;
+}
+.ripple:before {-webkit-animation-delay:.2s;-moz-animation-delay:.2s;top:5px;left:25px;}
+.ripple:after {-webkit-animation-delay:.8s;-moz-animation-delay:.8s;top:25px;left:0;}

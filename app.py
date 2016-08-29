@@ -14,16 +14,30 @@ from pyItunes import *
 from apiclient.discovery import build
 from apiclient.errors import HttpError
 from oauth2client.tools import argparser
+# firebase
+import pyrebase
 
-
-gData = {
-    'authorization_header': ''
+GLOBAL = {
+    'authorization_header': None,
+    'avatar': None,
+    'spotify_playlists_ids': [],
+    'spotify_playlists_names': [],
+    'iTunes_library': None,
+    'iTunes_playlists': []
 }
 
+config = {
+    'apiKey': "AIzaSyC0snFo1RTSYg_OEaJ-373bOdQoDQSv3pg",
+    'authDomain': "muse-d2516.firebaseapp.com",
+    'databaseURL': "https://muse-d2516.firebaseio.com",
+    'storageBucket': "muse-d2516.appspot.com"
+}
+firebase = pyrebase.initialize_app(config)
+db = firebase.database()
 
 # Set home directory based on logged in user
 homedir = os.environ['HOME']
-user = homedir.rsplit('/', 1)[-1]
+local_username = homedir.rsplit('/', 1)[-1]
 
 # Authentication Steps, paramaters, and responses are defined at https://developer.spotify.com/web-api/authorization-guide/
 # Visit this url to see all the steps, parameters, and expected response.
@@ -70,12 +84,29 @@ def index():
 def authorize():
     url_args = "&".join(["{}={}".format(key,urllib.quote(val)) for key,val in auth_query_parameters.iteritems()])
     auth_url = "{}/?{}".format(SPOTIFY_AUTH_URL, url_args)
-    if os.path.exists("/Users/" + user + "/Music/iTunes/iTunes Music Library.xml"):
-        gData['library'] = Library("/Users/" + user + "/Music/iTunes/iTunes Music Library.xml")
-        gData['playlists']=gData['library'].getPlaylistNames()
-        return redirect(auth_url)
-    else:
-        return redirect("/itunes")
+    # add itunes playlists
+    if os.path.exists("/Users/" + local_username + "/Music/iTunes/iTunes Music Library.xml"):
+        GLOBAL['iTunes_library'] = Library("/Users/" + local_username + "/Music/iTunes/iTunes Music Library.xml")
+        GLOBAL['iTunes_playlists'] = GLOBAL['iTunes_library'].getPlaylistNames()[2:len(GLOBAL['iTunes_library'].getPlaylistNames())]
+
+    # Get a reference to the auth service
+    # email = request.args.get('email', 0, type=str)
+    # password = request.args.get('password', 0, type=str)
+    # print email, password
+    auth = firebase.auth()
+
+    # auth.create_user_with_email_and_password('sjfstebbins@gmail.com', 'testing')
+    GLOBAL['user'] = auth.sign_in_with_email_and_password('sjfstebbins@gmail.com', 'testing')
+
+    # firebaseUser = auth.sign_in_with_email_and_password('sjfstebbins@gmail.com', 'test')
+    #
+    # # Get a reference to the database service
+    # db = firebase.database()
+    # data = {
+    #     "name": "Mortimer 'Morty' Smith"
+    # }
+    # results = db.child("users").child("Morty").update(data, firebaseUser['idToken'])
+    return redirect(auth_url)
 
 @app.route("/itunes")
 def add_library():
@@ -102,34 +133,88 @@ def callback():
     expires_in = response_data["expires_in"]
 
     # Auth Step 6: Use the access token to access Spotify API
-    gData['authorization_header'] = {"Authorization":"Bearer {}".format(access_token)}
+    GLOBAL['authorization_header'] = {"Authorization":"Bearer {}".format(access_token)}
 
     # Get profile data
     user_profile_api_endpoint = "{}/me".format(SPOTIFY_API_URL)
-    profile_response = requests.get(user_profile_api_endpoint, headers=gData['authorization_header'])
+    profile_response = requests.get(user_profile_api_endpoint, headers=GLOBAL['authorization_header'])
     profile_data = json.loads(profile_response.text)
-    gData['avatar'] = profile_data['images'][0]['url']
+    GLOBAL['avatar'] = profile_data['images'][0]['url']
+
+    # Get a reference to the database service
+    data = {
+        "name": profile_data['display_name']
+    }
+    db.child("users").child(profile_data['display_name']).update(data, GLOBAL['user']['idToken'])
+
+    # Get spotify playlists
+    playlist_api_endpoint = "{}/playlists".format(profile_data["href"])
+    playlists_response = requests.get(playlist_api_endpoint, headers=GLOBAL['authorization_header'])
+    playlists_data = json.loads(playlists_response.text)
+
+    for playlist in playlists_data['items']:
+        GLOBAL['spotify_playlists_names'].append(playlist['name'])
+        GLOBAL['spotify_playlists_ids'].append(playlist['id'])
+
     return redirect("/home")
 
 @app.route("/home")
 def home():
     return render_template("index.html",
-                                avatar=gData['avatar'],
-                                playlists=enumerate(gData['playlists']))
+                            avatar=GLOBAL['avatar'],
+                            itunes_playlists=enumerate(GLOBAL['iTunes_playlists']),
+                            spotify_playlists=enumerate(GLOBAL['spotify_playlists_names']))
 @app.route("/get_playlist")
 def get_playlist():
+
     # MUSE Algo
     seed_data = {
-        'track_titles': [],
-        'track_artists': [],
+        'titles': [],
+        'artists': [],
         'artist_ids': [],
-        'track_plays':[],
-        'track_ids': [],
+        'play_counts':[],
+        'song_ids': [],
         'track_genres': [],
-        'track_attributes': [],
-        'track_images': [],
+        'attributes': [],
+        'images': [],
         'distances': []
     }
+
+    def getSong (track, new):
+        if track != 0:
+            if new:
+                artist = "%20artist:" + urllib.quote(track['artist'] or '').encode()
+                song = urllib.quote(track['name'] or '').encode()
+                plays = 1
+            else:
+                artist = "%20artist:" + urllib.quote(track.artist or '').encode()
+                song = urllib.quote(track.name  or '').encode()
+                plays = track.play_count
+            # spotifySearch(song,artist,track.play_count)
+            track_api_endpoint = SPOTIFY_API_URL  + "/search?q=" + song + artist + "&type=track&limit=1"
+            track_response = requests.get(track_api_endpoint, headers=GLOBAL['authorization_header'])
+            tracks_data = json.loads(track_response.text)
+            # add track data if search for track yielded results
+            if len(tracks_data['tracks']['items']) > 0:
+                # append to song_ids
+                track_id = tracks_data['tracks']['items'][0]['id']
+                seed_data['song_ids'].append(track_id)
+                # append to titles
+                track_title = tracks_data['tracks']['items'][0]['name']
+                seed_data['titles'].append(track_title)
+                # append to artist_ids
+                track_artist = tracks_data['tracks']['items'][0]['artists'][0]['id']
+                seed_data['artist_ids'].append(track_artist)
+                # append to artist_ids
+                track_artist = tracks_data['tracks']['items'][0]['artists'][0]['name']
+                seed_data['artists'].append(track_artist)
+                # append to play_counts
+                if plays:
+                    seed_data['play_counts'].append(plays)
+                else:
+                    seed_data['play_counts'].append(1)
+                # append images
+                seed_data['images'].append(tracks_data['tracks']['items'][0]['album']['images'][0]['url'])
 
     # if making request for billboard playlist
     if request.args.get('day', None, type=str) != None:
@@ -161,33 +246,9 @@ def get_playlist():
 
         # extract playlist track data
         for track in playlist:
-            artist = "%20artist:" + urllib.quote(track[1]).encode() if track[1] else ''
-            song = urllib.quote(track[0]).encode() or ''
-            plays = int(track[2])
-            track_api_endpoint = SPOTIFY_API_URL  + "/search?q=" + song + artist + "&type=track&limit=1"
-            track_response = requests.get(track_api_endpoint, headers=gData['authorization_header'])
-            tracks_data = json.loads(track_response.text)
-            # add track data if search for track yielded results
-            if len(tracks_data['tracks']['items']) > 0:
-                # append to track_ids
-                track_id = tracks_data['tracks']['items'][0]['id']
-                seed_data['track_ids'].append(track_id)
-                # append to track_titles
-                track_title = tracks_data['tracks']['items'][0]['name']
-                seed_data['track_titles'].append(track_title)
-                # append to artist_ids
-                track_artist = tracks_data['tracks']['items'][0]['artists'][0]['id']
-                seed_data['artist_ids'].append(track_artist)
-                # append to artist_ids
-                track_artist = tracks_data['tracks']['items'][0]['artists'][0]['name']
-                seed_data['track_artists'].append(track_artist)
-                # append to play_counts
-                if plays:
-                    seed_data['track_plays'].append(plays)
-                else:
-                    seed_data['track_plays'].append(1)
-                # append images
-                seed_data['track_images'].append(tracks_data['tracks']['items'][0]['album']['images'][0]['url'])
+            getSong(track, False)
+
+
         # close browser
         driver.quit()
 
@@ -195,63 +256,29 @@ def get_playlist():
     else:
         playlist = request.args.get('playlist', 0, type=int)
 
-        # extract playlist track data
-        for track in gData['library'].getPlaylist(gData['playlists'][playlist]).tracks:
-            artist = "%20artist:" + urllib.quote(track.artist).encode() if track.artist else ''
-            song = urllib.quote(track.name).encode() or ''
-            plays = track.play_count
-            # spotifySearch(song,artist,track.play_count)
-            track_api_endpoint = SPOTIFY_API_URL  + "/search?q=" + song + artist + "&type=track&limit=1"
-            track_response = requests.get(track_api_endpoint, headers=gData['authorization_header'])
-            tracks_data = json.loads(track_response.text)
-            # add track data if search for track yielded results
-            if len(tracks_data['tracks']['items']) > 0:
-                # append to track_ids
-                track_id = tracks_data['tracks']['items'][0]['id']
-                seed_data['track_ids'].append(track_id)
-                # append to track_titles
-                track_title = tracks_data['tracks']['items'][0]['name']
-                seed_data['track_titles'].append(track_title)
-                # append to artist_ids
-                track_artist = tracks_data['tracks']['items'][0]['artists'][0]['id']
-                seed_data['artist_ids'].append(track_artist)
-                # append to artist_ids
-                track_artist = tracks_data['tracks']['items'][0]['artists'][0]['name']
-                seed_data['track_artists'].append(track_artist)
-                # append to play_counts
-                if plays:
-                    seed_data['track_plays'].append(plays)
-                else:
-                    seed_data['track_plays'].append(1)
-                # append images
-                seed_data['track_images'].append(tracks_data['tracks']['items'][0]['album']['images'][0]['url'])
+         # extract playlist track data
+        for track in GLOBAL['iTunes_library'].getPlaylist(GLOBAL['iTunes_playlists'][playlist]).tracks:
+            getSong(track, False)
 
-    # SPOTIFY PLAYLISTS
-    # # Get user playlist data
-    # playlist_api_endpoint = "{}/playlists".format(profile_data["href"]) + '/08hZj3VHb1C0uJE1gcZ4Cg'
-    # playlists_response = requests.get(playlist_api_endpoint, headers=gData['authorization_header'])
-    # playlist_data = json.loads(playlists_response.text)
-    #
-    # # Get song attributes of all songs in a user's playlist
-    # ## work on getting better results sent back
-    # playlist_tracks = playlist_data["tracks"]["items"]
-    # track_ids = []
-    # track_names = []
-    # for track in playlist_tracks:
-    #     artist = track['track']['artists'][0]['name'].lower() or ''
-    #     song = track['track']['name'].lower() or ''
+    # if adding a new song to the playlist
+    track = {}
+    if request.args.get('title', 0, type=str) != 'None':
+        track['name'] = request.args.get('title', 0, type=str)
+        track['artist'] = request.args.get('artist', 0, type=str)
+    print track
+    if track['name']:
+        getSong(track, True)
 
-    # API: get collected tracks attributes
-    attributes_api_endpoint = SPOTIFY_API_URL  + "/audio-features?ids=" + ",".join(seed_data['track_ids'])
-    attributes_response = requests.get(attributes_api_endpoint, headers=gData['authorization_header'])
-    seed_data['track_attributes'] = json.loads(attributes_response.text)['audio_features']
+
+    # API: get collected song attributes
+    attributes_api_endpoint = SPOTIFY_API_URL  + "/audio-features?ids=" + ",".join(seed_data['song_ids'])
+    attributes_response = requests.get(attributes_api_endpoint, headers=GLOBAL['authorization_header'])
+    seed_data['attributes'] = json.loads(attributes_response.text)['audio_features']
 
     # multiply songs node based on play_counts to weight songs played more
     library_tracks = []
-    for i,attributes in enumerate(seed_data['track_attributes']):
-        library_tracks.extend(repeat(attributes, seed_data['track_plays'][i]))
-
-    ##PERFORM PCA TO REDUCE DIMENSIONALITY?
+    for i,attributes in enumerate(seed_data['attributes']):
+        library_tracks.extend(repeat(attributes, seed_data['play_counts'][i]))
 
     # create phantom_average_track
     phantom_average_track = {}
@@ -260,22 +287,22 @@ def get_playlist():
         phantom_average_track[attribute] = sum(track[attribute] for track in library_tracks) / len(library_tracks)
 
     # create tracks with just the float variables
-    library_track_attributes = []
-    for track in seed_data['track_attributes']:
+    playlist_tracks_attributes = []
+    for track in seed_data['attributes']:
         track_float_values = {}
         for attribute in target_attributes:
             track_float_values[attribute] = track[attribute]
-        library_track_attributes.append(track_float_values.values())
+        playlist_tracks_attributes.append(track_float_values.values())
 
     # get seed_distances from phantom_average_track
-    seed_distances = [phantom_average_track.values()] + library_track_attributes
+    seed_distances = [phantom_average_track.values()] + playlist_tracks_attributes
     dist = DistanceMetric.get_metric('euclidean')
     distances = dist.pairwise(seed_distances)[0]
     seed_data['distances'] = distances[1:len(distances)]
 
     # get attributes of the 5 closest tracks to the phantom_average_track
     seed_indexes = seed_data['distances'].argsort()[:5]
-    seed_songs = [seed_data['track_ids'][i] for i in seed_indexes]
+    seed_songs = [seed_data['song_ids'][i] for i in seed_indexes]
     seed_artists = [seed_data['artist_ids'][i] for i in seed_indexes]
 
     # get target attributes from phantom_average_track (roudn to two decimals)
@@ -295,12 +322,12 @@ def get_playlist():
             seed_data[key] = [seed_data[key][i] for i in sorted_seed_indexes]
 
     tracks = []
-    for i, title in enumerate(seed_data['track_titles']):
+    for i, title in enumerate(seed_data['titles']):
         tracks.append([
-            seed_data['track_artists'][i],
+            seed_data['artists'][i],
             title,
             str(round((100 -  seed_data['distances'][i]), 2)) + '%',
-            seed_data['track_images'][i]
+            seed_data['images'][i]
         ])
     #-----------------------------------------------------------
     # Pick best recommended song
@@ -313,19 +340,18 @@ def get_playlist():
         'images': [],
         'ids': [],
         'attributes': [],
-        'distances': [],
-        'videos': []
+        'distances': []
     }
 
     # API: get recommended tracks data based on seed and target values
     recommendations_api_endpoint = SPOTIFY_API_URL  + "/recommendations?seed_artists=" + ",".join(seed_artists) + "&target_energy=" + target_energy + "&target_liveness=" + target_liveness + "&target_tempo=" + target_tempo + "&target_speechiness=" + target_speechiness + "&target_acousticness=" + target_acousticness + "&target_instrumentalness=" + target_instrumentalness + "&target_danceability=" + target_danceability + "&target_loudness=" + target_loudness + "&limit=20"
-    recommendations_response = requests.get(recommendations_api_endpoint, headers=gData['authorization_header'])
+    recommendations_response = requests.get(recommendations_api_endpoint, headers=GLOBAL['authorization_header'])
     recommendation_data['data'] = json.loads(recommendations_response.text)['tracks']
 
     # set recommended track title and ids
     for track in recommendation_data['data']:
         # Dont add duplicate recommendations or songs already in your playlist
-        if track['id'] not in recommendation_data['ids'] and track['id'] not in seed_data['track_ids']:
+        if track['id'] not in recommendation_data['ids'] and track['id'] not in seed_data['song_ids']:
             recommendation_data['titles'].append(track['name'])
             recommendation_data['artists'].append(track['artists'][0]['name'])
             recommendation_data['ids'].append(track['id'])
@@ -333,7 +359,7 @@ def get_playlist():
 
     # API: get collected tracks attributes
     attributes_api_endpoint = SPOTIFY_API_URL  + "/audio-features?ids=" + ",".join(recommendation_data['ids'])
-    attributes_response = requests.get(attributes_api_endpoint, headers=gData['authorization_header'])
+    attributes_response = requests.get(attributes_api_endpoint, headers=GLOBAL['authorization_header'])
     recommendation_data['attributes'] = json.loads(attributes_response.text)['audio_features']
 
     # create tracks with just the float variables
@@ -356,14 +382,6 @@ def get_playlist():
         if recommendation_data[key] != []:
             recommendation_data[key] = [recommendation_data[key][i] for i in sorted_recommendation_indexes]
 
-    #---------------------------------------------------------------
-    # Stats for my playist being better
-    #---------------------------------------------------------------
-    from scipy import stats
-    # perform a two sample ttest of my library track distances from average and my recommend track distances
-    seed_recommend_ttest = stats.ttest_ind(seed_data['distances'],recommendation_data['distances'][0:len(seed_data['distances'])])
-
-
     # combine reommendation data into list
     recommendations = []
     # totalDistance = sum(recommendation_data['distances'])
@@ -376,6 +394,224 @@ def get_playlist():
         ])
 
     return jsonify(tracks=tracks,recommendations=recommendations)
+
+@app.route("/auto_generate")
+def auto_generate():
+    seed_data = {
+        'titles': [],
+        'artists': [],
+        'artist_ids': [],
+        'play_counts':[],
+        'song_ids': [],
+        'track_genres': [],
+        'attributes': [],
+        'images': [],
+        'distances': []
+    }
+    playlist = request.args.get('playlist', 0, type=int)
+
+    # extract playlist track data
+    for track in GLOBAL['iTunes_library'].getPlaylist(GLOBAL['iTunes_playlists'][playlist]).tracks:
+        artist = "%20artist:" + urllib.quote(track.artist).encode() if track.artist else ''
+        song = urllib.quote(track.name).encode() or ''
+        plays = track.play_count
+        # spotifySearch(song,artist,track.play_count)
+        track_api_endpoint = SPOTIFY_API_URL  + "/search?q=" + song + artist + "&type=track&limit=1"
+        track_response = requests.get(track_api_endpoint, headers=GLOBAL['authorization_header'])
+        tracks_data = json.loads(track_response.text)
+        # add track data if search for track yielded results
+        if len(tracks_data['tracks']['items']) > 0:
+            # append to song_ids
+            track_id = tracks_data['tracks']['items'][0]['id']
+            seed_data['song_ids'].append(track_id)
+            # append to titles
+            track_title = tracks_data['tracks']['items'][0]['name']
+            seed_data['titles'].append(track_title)
+            # append to artist_ids
+            track_artist = tracks_data['tracks']['items'][0]['artists'][0]['id']
+            seed_data['artist_ids'].append(track_artist)
+            # append to artist_ids
+            track_artist = tracks_data['tracks']['items'][0]['artists'][0]['name']
+            seed_data['artists'].append(track_artist)
+            # append to play_counts
+            if plays:
+                seed_data['play_counts'].append(plays)
+            else:
+                seed_data['play_counts'].append(1)
+            # append images
+            seed_data['images'].append(tracks_data['tracks']['items'][0]['album']['images'][0]['url'])
+    # API: get collected tracks attributes
+    attributes_api_endpoint = SPOTIFY_API_URL  + "/audio-features?ids=" + ",".join(seed_data['song_ids'])
+    attributes_response = requests.get(attributes_api_endpoint, headers=GLOBAL['authorization_header'])
+    seed_data['attributes'] = json.loads(attributes_response.text)['audio_features']
+
+
+    # SPOTIFY PLAYLISTS
+    # # Get user playlist data
+    # playlist_api_endpoint = "{}/playlists".format(profile_data["href"]) + '/08hZj3VHb1C0uJE1gcZ4Cg'
+    # playlists_response = requests.get(playlist_api_endpoint, headers=GLOBAL['authorization_header'])
+    # playlist_data = json.loads(playlists_response.text)
+    #
+    # # Get song attributes of all songs in a user's playlist
+    # ## work on getting better results sent back
+    # playlist_tracks = playlist_data["tracks"]["items"]
+    # song_ids = []
+    # track_names = []
+    # for track in playlist_tracks:
+    #     artist = track['track']['artists'][0]['name'].lower() or ''
+    #     song = track['track']['name'].lower() or ''
+
+
+    def recurs(seed_data,i,max):
+        # API: get collected tracks attributes
+        attributes_api_endpoint = SPOTIFY_API_URL  + "/audio-features?ids=" + ",".join(seed_data['song_ids'])
+        attributes_response = requests.get(attributes_api_endpoint, headers=GLOBAL['authorization_header'])
+        seed_data['attributes'] = json.loads(attributes_response.text)['audio_features']
+        # multiply songs node based on play_counts to weight songs played more
+        library_tracks = []
+        for i,attributes in enumerate(seed_data['attributes']):
+            library_tracks.extend(repeat(attributes, seed_data['play_counts'][i]))
+
+        ##PERFORM PCA TO REDUCE DIMENSIONALITY?
+
+        # create phantom_average_track
+        phantom_average_track = {}
+        target_attributes = ['energy','liveness','tempo','speechiness','acousticness','instrumentalness','danceability','loudness']
+        for attribute in target_attributes:
+            phantom_average_track[attribute] = sum(track[attribute] for track in library_tracks) / len(library_tracks)
+
+        # create tracks with just the float variables
+        playlist_tracks_attributes = []
+        for track in seed_data['attributes']:
+            track_float_values = {}
+            for attribute in target_attributes:
+                track_float_values[attribute] = track[attribute]
+            playlist_tracks_attributes.append(track_float_values.values())
+
+        # get seed_distances from phantom_average_track
+        seed_distances = [phantom_average_track.values()] + playlist_tracks_attributes
+        dist = DistanceMetric.get_metric('euclidean')
+        distances = dist.pairwise(seed_distances)[0]
+        seed_data['distances'] = distances[1:len(distances)]
+
+        # get attributes of the 5 closest tracks to the phantom_average_track
+        seed_indexes = seed_data['distances'].argsort()[:5]
+        seed_songs = [seed_data['song_ids'][i] for i in seed_indexes]
+        seed_artists = [seed_data['artist_ids'][i] for i in seed_indexes]
+
+        # get target attributes from phantom_average_track (roudn to two decimals)
+        target_energy = str(round(phantom_average_track['energy'],2))
+        target_liveness = str(round(phantom_average_track['liveness'],2))
+        target_tempo = str(round(phantom_average_track['tempo'],2))
+        target_speechiness = str(round(phantom_average_track['speechiness'],2))
+        target_acousticness = str(round(phantom_average_track['acousticness'],2))
+        target_instrumentalness = str(round(phantom_average_track['instrumentalness'],2))
+        target_danceability = str(round(phantom_average_track['danceability'],2))
+        target_loudness = str(round(phantom_average_track['loudness'],2))
+
+        # sort recommendation_data object based on recommendation_data distances
+        sorted_seed_indexes = seed_data['distances'].argsort()[:len(seed_data['distances'])]
+        for key in seed_data.keys():
+            if seed_data[key] != []:
+                seed_data[key] = [seed_data[key][i] for i in sorted_seed_indexes]
+
+        tracks = []
+        for i, title in enumerate(seed_data['titles']):
+            tracks.append([
+                seed_data['artists'][i],
+                title,
+                str(round((100 -  seed_data['distances'][i]), 2)) + '%',
+                seed_data['images'][i]
+            ])
+        #-----------------------------------------------------------
+        # Pick best recommended song
+        #------------------------------------------------------------
+
+        recommendation_data = {
+            'data': [],
+            'titles': [],
+            'artists': [],
+            'artist_ids': [],
+            'images': [],
+            'ids': [],
+            'attributes': [],
+            'distances': []
+        }
+        # API: get recommended tracks data based on seed and target values
+        recommendations_api_endpoint = SPOTIFY_API_URL  + "/recommendations?seed_artists=" + ",".join(seed_artists) + "&target_energy=" + target_energy + "&target_liveness=" + target_liveness + "&target_tempo=" + target_tempo + "&target_speechiness=" + target_speechiness + "&target_acousticness=" + target_acousticness + "&target_instrumentalness=" + target_instrumentalness + "&target_danceability=" + target_danceability + "&target_loudness=" + target_loudness + "&limit=1"
+        recommendations_response = requests.get(recommendations_api_endpoint, headers=GLOBAL['authorization_header'])
+        recommendation_data['data'] = json.loads(recommendations_response.text)['tracks']
+
+        # set recommended track title and ids
+        for track in recommendation_data['data']:
+            # Dont add duplicate recommendations or songs already in your playlist
+            if track['id'] not in recommendation_data['ids'] and track['id'] not in seed_data['song_ids']:
+                recommendation_data['titles'].append(track['name'])
+                recommendation_data['artists'].append(track['artists'][0]['name'])
+                recommendation_data['artist_ids'].append(track['artists'][0]['id'])
+                recommendation_data['ids'].append(track['id'])
+                recommendation_data['images'].append(track['album']['images'][0]['url'])
+
+        # API: get collected tracks attributes
+        attributes_api_endpoint = SPOTIFY_API_URL  + "/audio-features?ids=" + ",".join(recommendation_data['ids'])
+        attributes_response = requests.get(attributes_api_endpoint, headers=GLOBAL['authorization_header'])
+        recommendation_data['attributes'] = json.loads(attributes_response.text)['audio_features']
+
+        # create tracks with just the float variables
+        recommendation_track_attributes = []
+        for track in recommendation_data['attributes']:
+            track_float_values = {}
+            for attribute in target_attributes:
+                track_float_values[attribute] = track[attribute]
+            recommendation_track_attributes.append(track_float_values.values())
+
+        # get recommendation_distances from phantom_average_track
+        recommendation_distances = [phantom_average_track.values()] + recommendation_track_attributes
+        dist = DistanceMetric.get_metric('euclidean')
+        distances = dist.pairwise(recommendation_distances)[0]
+        recommendation_data['distances'] = distances[1:len(distances)]
+
+        # sort recommendation_data object based on recommendation_data distances
+        sorted_recommendation_indexes = recommendation_data['distances'].argsort()[:len(recommendation_data['distances'])]
+        for key in recommendation_data.keys():
+            if recommendation_data[key] != []:
+                recommendation_data[key] = [recommendation_data[key][i] for i in sorted_recommendation_indexes]
+
+        # combine reommendation data into list
+        recommendations = []
+        # totalDistance = sum(recommendation_data['distances'])
+        for i, title in enumerate(recommendation_data['titles']):
+            recommendations.append([
+                recommendation_data['artists'][i],
+                title,
+                str(round((100 -  recommendation_data['distances'][i]), 2)) + '%',
+                recommendation_data['images'][i],
+                recommendation_data['ids'][i]
+            ])
+
+        # totalDistance = sum(recommendation_data['distances'])
+        if i <= max:
+            seed_data['titles'].append(recommendation_data['titles'][0])
+            seed_data['artists'].append(recommendation_data['artists'][0])
+            seed_data['play_counts'].append(1)
+            seed_data['attributes'].append(recommendation_data['attributes'][0])
+            seed_data['song_ids'].append(recommendation_data['ids'][0])
+            seed_data['images'].append(recommendation_data['images'][0])
+            seed_data['distances'].append(recommendation_data['distances'][0])
+            seed_data['artist_ids'].append(recommendation_data['artist_ids'][0])
+            return recurs(seed_data, i+1, max)
+        else:
+            return jsonify(tracks=tracks,recommendations=recommendations)
+
+    recurs(seed_data,1,request.args.get('max', 0, type=int))
+
+        # #---------------------------------------------------------------
+        # # Stats for my playist being better
+        # #---------------------------------------------------------------
+        # from scipy import stats
+        # # perform a two sample ttest of my library track distances from average and my recommend track distances
+        # seed_recommend_ttest = stats.ttest_ind(seed_data['distances'],recommendation_data['distances'][0:len(seed_data['distances'])])
+
 
 @app.route("/get_video")
 def get_video():

@@ -8,21 +8,29 @@
   <!-- Material Design -->
   <link href="{{url_for('static', filename='css/base.min.css')}}" rel="stylesheet">
   <link href="{{url_for('static', filename='css/project.min.css')}}" rel="stylesheet">
-  <style>
-    .icon:hover {
-      color: #ff4081 !important;
+  <!-- Custom CSS -->
+  <link href="{{url_for('static', filename='css/custom.css')}}" rel="stylesheet">
+  <style class="keyframe-style" id="rainbow" type="text/css">@keyframes rainbow {0% {background-position:0% 50%;}50% {background-position:100% 50%;}100% {background-position:0% 50%;}}</style>
+  <!-- /*<style class="keyframe-style" id="rip" type="text/css">@keyframes rip {
+    0%  {
+      box-shadow:0 0 0 0 transparent,
+                 0 0 0 0 transparent,
+                 0 0 0 0 transparent,
+                 0 0 0 0 transparent;
     }
-    .rainbow {
-      animation: CustomAnimation 10s ease infinite;
-      background: linear-gradient(270deg, rgb(31, 234, 182), rgb(234, 31, 199), rgb(234, 194, 31)) 0% 0% / 300% 300%;
-      color: white
+    15%  {
+      box-shadow:0 0 0 0 'white',
+                 0 0 0 0 rgba(255,255,255,0.4),
+                 0 0 0 0 'white',
+                 0 0 0 0 rgba(0,0,0,0.08);
     }
-    .tile-brand-accent {
-      background-color: white !important;
-      color: white !important
-    }
-  </style>
-  <style class="keyframe-style" id="CustomAnimation" type="text/css">@keyframes CustomAnimation {0% {background-position:0% 50%;}50% {background-position:100% 50%;}100% {background-position:0% 50%;}}</style>
+    100% {
+      box-shadow:0 0 40px 200px 'white',
+                 0 0 10px 210px transparent,
+                 0 0 30px 220px 'white',
+                 0 0 5px 230px transparent;
+    }}
+</style>*/ -->
 </head>
 <body class="ui-picker-page">
   <header class="header header-waterfall ui-header" style="border-bottom:1px solid darkgrey;">
@@ -74,17 +82,29 @@
   					<div class="menu-top-info">
   						<span class="menu-top-user" style="color: #9a9a9a;font-weight: 500;margin-top: -5px;">Playlists</span>
   					</div>
-  					<div class="menu-top-info-sub">
-  						<small></small>
-  					</div>
   				</div>
   				<div class="menu-content">
-  					<ul class="nav">
-              {% for i, playlist in playlists %}
-  							<li>
-  								<a class="waves-attach waves-effect playlist" href="javascript:void(0)" name={{ i }}>{{ playlist }}</a>
-  							</li>
-						  {% endfor %}
+  					<ul class="nav" style="margin-top: 46px;">
+              <li>
+                <a class="waves-attach" data-toggle="collapse" href="#itunes">iTunes</a>
+                <ul class="menu-collapse collapse in" id="itunes">
+                    {% for i, playlist in itunes_playlists %}
+      							<li>
+      								<a class="waves-attach waves-effect playlist" href="javascript:void(0)" name={{ i }}>{{ playlist }}</a>
+      							</li>
+						        {% endfor %}
+                </ul>
+              </li>
+              <li>
+  							<a class="waves-attach" data-toggle="collapse" href="#ui_picker_category_two">Spotify</a>
+  							<ul class="menu-collapse collapse in" id="ui_picker_category_two">
+                  {% for i, playlist in spotify_playlists %}
+                  <li>
+                    <a class="waves-attach waves-effect playlist" href="javascript:void(0)" name={{ i }}>{{ playlist }}</a>
+                  </li>
+                  {% endfor %}
+  							</ul>
+  						</li>
   					</ul>
   				</div>
   			</div>
@@ -119,7 +139,7 @@
         					<h2 class="modal-title">Song Relevance</h2>
         				</div>
         				<div class="modal-inner">
-                  <p> Song Relevance is an indicator of how well a song matches the <strong>Phantom Average Track</strong> attributes of the selected playlist. The <strong>Phantom Average Track</strong> is the average attributes of each song within the playlist (tempo, energy, danceability etc..) weighted by play count. Song Relevance is one minus the nearest neighbor euclidean distance from this <strong>Phantom Average Track</strong>.
+                  <p> Song Relevance is an indicator of how well a song matches the <strong>Phantom Average Track</strong> attributes of the selected playlist. The <strong>Phantom Average Track</strong> is the average attributes of each song within the playlist (tempo, energy, danceability etc..) weighted by play count. Song Relevance is one hundred minus the Euclidean distance from the <strong>Phantom Average Track</strong>.
 
                   </p>
                   <i>* When using a Billboard generated playlist, songs are weighted by the number of weeks spent listed in the Top 100</i>
@@ -133,12 +153,19 @@
           <hr/>
         </p>
         <div class="ui-picker-divider"></div>
-        <div class="ui-picker-inner" style="margin-top: 55px;height: calc(100% - 112px);">
-          <div id="tracks" class="tile-wrap margin-bottom-no margin-top-no ui-picker-lib" style="min-height:calc(100% - 112px);">
-            <!-- DYNAMIC PLAYLIST SONGS  -->
+        <div id="tracks-container" class="ui-picker-inner" style="margin-top: 55px;height: calc(100% - 114px);overflow-x: hidden;">
+          <div id="track-load" style="width:100%;height:110%;opacity:0;position: absolute;z-index: 0;background:white">
+            <card style="position:absolute;opacity:1;top:40%;color:darkgrey;font-size:14px;text-align: center;width: 100%;">
+              Add To Playlist
+            </card>
           </div>
-          <div class="placeholder" style="position:absolute;opacity:1;top:40%;left:42%;color:lightgrey">
-            Select A Playlist
+          <div class="placeholder" style="width:100%;height:100%;opacity:1;position: absolute;z-index: 0;background:white">
+            <card class="placeholder-content" style="position:absolute;opacity:1;top:40%;color:darkgrey;font-size:14px;text-align: center;width: 100%;">
+              Select A Playlist
+            </card>
+          </div>
+          <div id="tracks" class="dragdrop tile-wrap margin-bottom-no margin-top-no ui-picker-lib" style="min-height:calc(100% - 112px);">
+            <!-- DYNAMIC PLAYLIST SONGS  -->
           </div>
         </div>
       </div>
@@ -159,7 +186,7 @@
         					<h2 class="modal-title">Recommendation Relevance</h2>
         				</div>
         				<div class="modal-inner">
-                  <p> Recommendation Relevance is an indicator of how well a song matches the <strong>Phantom Average Track</strong> attributes of the selected playlist. The <strong>Phantom Average Track</strong> is the average attributes of each song within the playlist (tempo, energy, danceability etc..) weighted by play count. Recommendation Relevance is one minus the nearest neighbor euclidean distance from this <strong>Phantom Average Track</strong>.
+                  <p> Recommendation Relevance is an indicator of how well a song matches the <strong>Phantom Average Track</strong> attributes of the selected playlist. The <strong>Phantom Average Track</strong> is the average attributes of each song within the playlist (tempo, energy, danceability etc..) weighted by play count. Recommendation Relevance is one hundred minus the Euclidean distance from the <strong>Phantom Average Track</strong>.
                   </p>
         				</div>
         				<div class="modal-footer">
@@ -171,12 +198,19 @@
           <hr/>
         </p>
         <div class="ui-picker-divider"></div>
-  			<div class="ui-picker-inner" style="margin-top: 55px;height: calc(100% - 112px);">
-  				<div id="recommendations" class="tile-wrap margin-bottom-no margin-top-no ui-picker-lib" style="min-height:calc(100% - 112px);">
-            <!-- DYNAMIC RECOMMENDED SONGS  -->
+  			<div id="recommendations-container" class="ui-picker-inner" style="margin-top: 55px;height: calc(100% - 114px);overflow-x: hidden;">
+          <div id=recommendation-load style="width:100%;height:110%;opacity:0;position: absolute;z-index: 0;background:white">
+            <card style="position:absolute;opacity:1;top:40%;color:darkgrey;font-size:14px;text-align: center;width: 100%;">
+              Fetching Recommendations...
+            </card>
           </div>
-          <div class="placeholder" style="position:absolute;opacity:1;top:40%;left:42%;color:lightgrey">
-            Nothing To Recommend
+          <div class="placeholder" style="width:100%;height:100%;opacity:1;position: absolute;z-index: 0;background:white">
+            <card class="placeholder-content" style="position:absolute;opacity:1;top:40%;color:darkgrey;font-size:14px;text-align: center;width: 100%;">
+              Nothing To Recommended
+            </card>
+          </div>
+  				<div id="recommendations" class="dragdrop tile-wrap margin-bottom-no margin-top-no ui-picker-lib" style="min-height:calc(100% - 112px);">
+            <!-- DYNAMIC RECOMMENDED SONGS  -->
           </div>
         </div>
       </div>
@@ -209,7 +243,7 @@
       <a id="previous" class="btn btn-flat waves-attach" style="color:#9a9a9a;position: absolute;left: 20px;top: 5px;border-radius: 0%;font-size:30px">
         <span class="icon">skip_previous</span>
       </a>
-      <div id="play" style="padding-left: 1px;cursor: pointer;border-radius: 90%;border: 1px solid lightgrey;left: 80px;top: 5px;width: 50px;height: 50px;position: absolute !important;">
+      <div id="play" style="color: #ff4081;padding-left: 1px;cursor: pointer;border-radius: 90%;border: 1px solid lightgrey;left: 80px;top: 5px;width: 50px;height: 50px;position: absolute !important;">
         <div class="front" class="btn btn-flat" style="color:#9a9a9a;padding: 8px;font-size: 30px;">
           <span class="icon">play_arrow</span>
         </div>
@@ -224,11 +258,16 @@
       <div class="progress" style="width: calc(100% - 380px);left: 240px;top: 3px;opacity: .8;position:absolute;background-color:lightgrey;">
           <div id="progress" class="progress-bar" style="background-color:#3f51b5"></div>
       </div>
-      <div id="end-time" style="position: absolute;right: 95px;top: 20px;font-size: 10px;color: darkgrey;"></div>
+      <div id="end-time" style="position: absolute;right: 110px;top: 20px;font-size: 10px;color: darkgrey;">--:--</div>
       <!-- <div class="checkbox switch" style="position: absolute;right: 25px;top: 20px;color: darkgrey;">
           <label>
               <input class="access-hide" id="autoplay" type="checkbox"><span class="switch-toggle"></span> Autoplay
           </label>
+      </div> -->
+      <!-- <div style="position: absolute;right: 25px;top: 20px;color: darkgrey;">
+          <a id="auto" class="btn btn-flat waves-attach" style="color:#9a9a9a;">
+            AutoGenerate
+          </a>
       </div> -->
     </div>
 	<!-- js -->
@@ -241,28 +280,44 @@
   <script src="{{url_for('static', filename='js/project.min.js')}}"></script>
   <script type=text/javascript>
     var playlist = []
+    var tracks = []
+    var recommendations = []
+    var playlist_name = null
+    $('#tracks-container').on('scroll', function () {
+      $('#track-load').css('top',$(this).scrollTop())
+    })
+    $('#recommendations-container').on('scroll', function () {
+      $('#recommendation-load').css('top',$(this).scrollTop())
+    })
     //PLAYLIST CALL------------------------------------------------
-    $('.playlist').bind('click', function() {
+    var getPlaylist = function (playlist_name, track) {
       // loader
       $('#loader, .placeholder').animate({
         opacity: 1
       }, 1000)
       //change placeholder text
-      $('.placeholder').each(function() {
+      $('.placeholder-content').each(function() {
         $(this).html('Loading...')
       })
-      // clear playlists
-      $('#recommendations').empty()
-      $('#tracks').empty()
-      //add highlight
-      // $(this).css('background', '#ff4081')
-      // $(this).css('color', 'white')
-      playlist =  $(this).attr('name')
-      $.getJSON('/get_playlist', {
-        playlist: playlist
-      }, function(data) {
+
+      var params = {
+        playlist: playlist_name
+      }
+      if (track) {
+        params = {
+          playlist: playlist_name,
+          title: track.title || 'None',
+          artist: track.artist || 'None'
+        }
+      }
+      $.getJSON('/get_playlist', params, function(data) {
+        // clear playlists
+        $('#recommendations').empty()
+        $('#tracks').empty()
         //playlist of all tracks
         playlist = data.tracks.concat(data.recommendations)
+        tracks = data.tracks
+        recommendations = data.recommendations
         //sort playlist on distances
         playlist.sort(function (a, b) {
             if (a[2] === b[2]) {
@@ -274,27 +329,92 @@
         })
         for (var item in data.recommendations) {
           item = data.recommendations[item]
-          $('#recommendations').append('<div class="tile ui-picker-item"><div class="ui-picker-selectable-handler" artist="'+ item[0] +'" title="'+item[1]+'"></div><div class="tile-side pull-left"><div class="avatar avatar-sm ui-picker-draggable-avatar ui-picker-draggable-handler"><img src=' + item[3] + ' /></div></div><div class="tile-inner"><div class="media"><div class="media-object pull-right"><small>' + item[2] + '</small></div><div class="media-inner text-overflow"><span class="ui-picker-info-title"> ' + item[0] + ': ' + item[1] + '</span></div></div><div class="access-hide"><div class="ui-picker-info-desc"><p>Artist Info</p></div></div></div></div>');
+          $('#recommendations').append('<div class="tile ui-picker-item recommendation" artist="'+ item[0] +'" title="'+item[1]+'"><div class="ui-picker-selectable-handler" artist="'+ item[0] +'" title="'+item[1]+'"></div><div class="tile-side pull-left"><div class="avatar avatar-sm ui-picker-draggable-avatar ui-picker-draggable-handler"><img src=' + item[3] + ' /></div></div><div class="tile-inner"><div class="media"><div class="media-object pull-right"><small>' + item[2] + '</small></div><div class="media-inner text-overflow"><span class="ui-picker-info-title"> ' + item[0] + ': ' + item[1] + '</span></div></div><div class="access-hide"><div class="ui-picker-info-desc"><p>Artist Info</p></div></div></div></div>');
         }
         for (var item in data.tracks) {
           item = data.tracks[item]
-          $('#tracks').append('<div class="tile ui-picker-item recommendations"><div class="ui-picker-selectable-handler" artist="'+ item[0] +'" title="'+item[1]+'"></div><div class="tile-side pull-left"><div class="avatar avatar-sm ui-picker-draggable-avatar ui-picker-draggable-handler"><img src=' + item[3] + ' /></div></div><div class="tile-inner"><div class="media"><div class="media-object pull-right"><small>' + item[2] + '</small></div><div class="media-inner text-overflow"><span class="ui-picker-info-title"> ' + item[0] + ': ' + item[1] + '</span></div></div><div class="access-hide"><div class="ui-picker-info-desc"><p>Artist Info</p></div></div></div></div>');
+          $('#tracks').append('<div class="tile ui-picker-item"><div class="ui-picker-selectable-handler" artist="'+ item[0] +'" title="'+item[1]+'"></div><div class="tile-side pull-left"><div class="avatar avatar-sm ui-picker-draggable-avatar ui-picker-draggable-handler"><img src=' + item[3] + ' /></div></div><div class="tile-inner"><div class="media"><div class="media-object pull-right"><small>' + item[2] + '</small></div><div class="media-inner text-overflow"><span class="ui-picker-info-title"> ' + item[0] + ': ' + item[1] + '</span></div></div><div class="access-hide"><div class="ui-picker-info-desc"><p>Artist Info</p></div></div></div></div>');
         }
         $('#loader').animate({
           opacity: 0
         }, 500)
         $('.placeholder').css('opacity',0)
-        // $('.ui-picker-item:first').addClass('ui-selectee')
-        // $('.ui-picker-lib > .ui-picker-selectable-handler').first().click()
-        // $("#result").text(data.result);
+        $('.placeholder').css('z-index',0)
+        $("#recommendation-load").animate({'opacity': 0, 'z-index': 0}, 500)
+        $('.recommendation').draggable({
+          zIndex: 100,
+          revert: true,
+          appendTo: 'body',
+          cursor: 'grab',
+          helper: 'clone',
+          containment: "document",
+          start: function( event, ui ) {
+            $("#track-load").animate({'opacity': .9, 'z-index': 10}, 500)
+          },
+          stop: function( event, ui ) {
+            $("#track-load").animate({'opacity': 0,'z-index': 0}, 500)
+          }
+        })
+        $('.recommendation').click( function () {
+          if ($(this).hasClass('rainbow') == false) {
+            //make it so only one song can be selected at a time
+            $('.rainbow div').first().removeClass('ui-selectee ui-selected')
+            $('.ui-picker-item').not($(this)).removeClass('rainbow tile-brand-accent ui-picker-selected');
+            $(this).addClass('rainbow tile-brand-accent ui-picker-selected')
+            $('.rainbow div').first().addClass('ui-selectee ui-selected')
+            $('.ui-picker-info').addClass('ui-picker-info-active')
+            artist =  $(this).attr('artist')
+            title =  $(this).attr('title')
+            $('#loader').animate({
+              opacity: 1
+            }, 1000)
+            $.getJSON('/get_video', {
+              artist: String(artist).replace(/"/g, "'"),
+              title: String(title).replace(/"/g, "'")
+            }, function(data) {
+              $('#play').flip('back');
+              //load new video
+              player.loadVideoById(data.video)
+              //hide loader
+              $('#loader').animate({
+                opacity: 0
+              }, 500)
+            });
+          }
+        })
       });
-      return false;
+    }
+    $('.playlist').bind('click', function() {
+      playlist_name = $(this).attr('name')
+      getPlaylist(playlist_name)
     });
+
+    $( "#tracks" ).droppable({
+      accept: ".recommendation",
+      drop: function( event, ui ) {
+        artist =  $(ui.draggable).attr('artist')
+        title =  $(ui.draggable).attr('title')
+        getPlaylist(playlist_name, {artist: artist, title: title})
+        ui.helper.fadeOut()
+        $("#track-load").animate({'opacity': 0, 'z-index': 0}, 500)
+        $("#recommendation-load").animate({'opacity': .9, 'z-index': 10}, 500)
+      }
+    });
+
+    // manually trigger the "select" of clicked elements
+    // $( ".recommendation > .ui-picker-selectable-handler" ).click( function(e){
+    //
+    // });
 
     // CONTROLS ACTIONS------------------------------------------------
     // initialize play
     $("#play").flip();
     $('#play').click(function(){
+      //if play button is clicked without a song being previously chosen
+      if ($('.rainbow').length == 0) {
+        loadSong(true)
+      }
+
       //play or pause
       if (player.getPlayerState() == 1) {
         player.pauseVideo()
@@ -310,18 +430,23 @@
     })
 
     //load song function
-    var loadSong = function() {
-      //find selected song and get song title
-      var selected_title = $('.rainbow').children()[0].title
-      var next_song = null
-      for (var i = 0; i < playlist.length;i++) {
-        if (playlist[i][1] == selected_title) {
-          // if last song
-          if (i == playlist.length - 1) {
-            next_song = playlist[0]
-          } else {
-          //set next_title
-            next_song = playlist[i + 1]
+    var loadSong = function(first) {
+      //if no previously chosen song
+      if (first) {
+        next_song = playlist[0]
+      } else {
+        //find selected song and get song title
+        var selected_title = $('.rainbow').children()[0].title
+        var next_song = null
+        for (var i = 0; i < playlist.length;i++) {
+          if (playlist[i][1] == selected_title) {
+            // if last song
+            if (i == playlist.length - 1) {
+              next_song = playlist[0]
+            } else {
+            //set next_title
+              next_song = playlist[i + 1]
+            }
           }
         }
       }
@@ -373,6 +498,7 @@
       $('*[title="' + previous_song[1] + '"]').parent().addClass('rainbow tile-brand-accent ui-picker-selected')
       $('.rainbow div').first().addClass('ui-selectee ui-selected')
       $('.ui-picker-info-title-wrap').text(previous_song[0] + ': ' + previous_song[1])
+
       // scroll to song
       $('.ui-picker-inner').animate({scrollTop: $(".rainbow").offset().top},'slow');
       //get next video
@@ -445,6 +571,42 @@
     //    the player should play for six seconds and then stop.
     var done = false;
     function onPlayerStateChange(event) {
+      // data = {
+      //   name: $('.rainbow').children()[0].title,
+      //   track_id: 'None',
+      //   artist: $('.rainbow').children()[0].artist,
+      //   album_artist: 'None',
+      //   composer: 'None',
+      //   album: 'None',
+      //   genre: 'None',
+      //   kind: 'None',
+      //   size: 'None',
+      //   total_time: 'None',
+      //   track_number: 'None',
+      //   track_count: 'None',
+      //   disc_number: 'None',
+      //   disc_count: 'None',
+      //   year: 'None',
+      //   date_modified: 'None',
+      //   date_added:  Date(),
+      //   bit_rate: 'None',
+      //   sample_rate: 'None',
+      //   comments: 'None',
+      //   rating: 'None',
+      //   rating_computed: 'None',
+      //   album_rating: 'None',
+      //   play_count:  1,
+      //   skip_count: 'None',
+      //   skip_date: 'None',
+      //   location: 'None',
+      //   compilation: 'None',
+      //   grouping: 'None',
+      //   lastplayed: 'None',
+      //   length: 'None'
+      // }
+      // $.post('/post_song', data, function(response) {
+      //   // Do something with the request
+      // }, 'json');
         if (player.getPlayerState() == 0) {
           loadSong()
         }
@@ -452,11 +614,11 @@
         $('#end-time').text(String(player.getDuration()).toHHMMSS())
     }
 
-    // ON ROW SELECT YOUTUBE CALL------------------------------------------------
-      $pickerLib.selectable({
-        selected: function( event, ui ) {
-          //empty out previous results
-          // $('#video').empty()
+  // ON ROW SELECT YOUTUBE CALL------------------------------------------------
+    $pickerLib.selectable({
+      selected: function( event, ui ) {
+        //don't reload video if click is the same item
+        if ($(ui.selected).parent().hasClass('rainbow') == false) {
           //make it so only one song can be selected at a time
           $('.rainbow div').first().removeClass('ui-selectee ui-selected')
           $('.ui-picker-item').not($(ui.selected).parent()).removeClass('rainbow tile-brand-accent ui-picker-selected');
@@ -480,9 +642,9 @@
               opacity: 0
             }, 500)
           });
-          return false;
         }
-      });
+      }
+    });
 
 
     // BILLBOARD CALL------------------------------------------------
