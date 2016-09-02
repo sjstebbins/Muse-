@@ -156,6 +156,11 @@ def callback():
         GLOBAL['spotify_playlists_names'].append(playlist['name'])
         GLOBAL['spotify_playlists_ids'].append(playlist['id'])
 
+    print GLOBAL['spotify_playlists_ids']
+
+    playlist_api_endpoint = "{}/playlists/0B5vTKCEIKBq25Bs3XADb0/tracks".format(profile_data["href"])
+    playlists_response = requests.post(playlist_api_endpoint, headers=GLOBAL['authorization_header'].update({"uris": ["spotify:iV5W9uYEdYUVa79Axb7Rh",
+    "spotify:WleyT98MSxVHPZCA6M"]}))
     return redirect("/home")
 
 @app.route("/home")
