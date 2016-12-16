@@ -45,8 +45,8 @@ local_username = homedir.rsplit('/', 1)[-1]
 app = Flask(__name__)
 
 #  Client Keys
-CLIENT_ID = "efe1eb24d4144c85820e486aac3dfe6d"
-CLIENT_SECRET = "fc0d5b90374e49a4bb9de5f9a6e3abdc"
+CLIENT_ID = INSERT HERE
+CLIENT_SECRET = INSERT HERE
 
 # Spotify URLS
 SPOTIFY_AUTH_URL = "https://accounts.spotify.com/authorize"
